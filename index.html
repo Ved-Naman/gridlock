@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTP AI Command Center</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { color: #38bdf8; margin: 0; font-size: 2.5em; }
+        .header p { color: #94a3b8; }
+        .container { display: flex; max-width: 1000px; margin: 0 auto; gap: 30px; }
+        .panel { background: #1e293b; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); flex: 1; }
+        .panel h2 { margin-top: 0; border-bottom: 2px solid #334155; padding-bottom: 10px; color: #e2e8f0; }
+        label { display: block; margin-top: 15px; color: #cbd5e1; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; }
+        button { margin-top: 25px; width: 100%; padding: 15px; background: #0284c7; color: white; border: none; border-radius: 6px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: background 0.3s; }
+        button:hover { background: #0369a1; }
+        
+        /* Results Section */
+        .result-box { margin-top: 20px; padding: 20px; background: #0f172a; border-radius: 8px; border-left: 5px solid #38bdf8; }
+        .score { font-size: 3em; font-weight: bold; color: #38bdf8; margin: 10px 0; }
+        .action { font-size: 1.2em; padding: 15px; border-radius: 6px; font-weight: bold; margin-top: 15px; }
+        .action.normal { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
+        .action.moderate { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid #eab308; }
+        .action.urgent { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>BTP AI Command Center</h1>
+        <p>Predictive Event-Driven Traffic Intelligence</p>
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <h2>Log Upcoming Event</h2>
+            
+            <label>Neighborhood Geohash (e.g., qp02z1)</label>
+            <input type="text" id="geohash" value="qp02z1">
+
+            <label>Event Time</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="hour" placeholder="Hour (0-23)" value="18" min="0" max="23">
+                <input type="number" id="minute" placeholder="Minute (0-59)" value="30" min="0" max="59">
+            </div>
+
+            <label>Event Severity Scale</label>
+            <select id="eventScale">
+                <option value="0">0 - Normal Day (No Event)</option>
+                <option value="1">1 - Vehicle Breakdown / Pothole</option>
+                <option value="2">2 - Construction / Tree Fall</option>
+                <option value="3">3 - Accident / Water Logging</option>
+                <option value="4">4 - Public Event / Procession</option>
+                <option value="5" selected>5 - Massive Protest / VIP Movement</option>
+            </select>
+
+            <button onclick="predictTraffic()">Generate AI Deployment Plan</button>
+        </div>
+
+        <div class="panel">
+            <h2>AI Prediction & Strategy</h2>
+            
+            <div class="result-box" id="resultBox" style="display: none;">
+                <div style="color: #94a3b8;">Predicted Congestion Score (0.0 to 1.0+)</div>
+                <div class="score" id="scoreDisplay">--</div>
+                
+                <div id="actionDisplay" class="action normal">
+                    Waiting for AI processing...
+                </div>
+            </div>
+            
+            <p id="waitingText" style="color: #64748b; text-align: center; margin-top: 50px;">
+                Enter event details to forecast gridlock...
+            </p>
+        </div>
+    </div>
+
+    <script>
+        async function predictTraffic() {
+            // Hide placeholder, show results box
+            document.getElementById('waitingText').style.display = 'none';
+            document.getElementById('resultBox').style.display = 'block';
+            document.getElementById('scoreDisplay').innerText = "Calculating...";
+            document.getElementById('actionDisplay').className = "action";
+            document.getElementById('actionDisplay').innerText = "Running Holy Trinity Models...";
+
+            // Gather inputs
+            const payload = {
+                geohash: document.getElementById('geohash').value,
+                hour: parseInt(document.getElementById('hour').value),
+                minute: parseInt(document.getElementById('minute').value),
+                road_type: "1",
+                weather: "1",
+                active_event_scale: parseInt(document.getElementById('eventScale').value)
+            };
+
+            try {
+                // Call your Python Server
+                const response = await fetch("http://localhost:8000/predict-event-impact", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                // Update the Dashboard with Results
+                const score = data.predicted_congestion_score;
+                document.getElementById('scoreDisplay').innerText = score.toFixed(3);
+                
+                const actionBox = document.getElementById('actionDisplay');
+                actionBox.innerText = data.btp_deployment_recommendation;
+
+                // Color code based on danger
+                if (score > 0.7) actionBox.className = "action urgent";
+                else if (score > 0.4) actionBox.className = "action moderate";
+                else actionBox.className = "action normal";
+
+            } catch (error) {
+                console.error("API Error:", error);
+                document.getElementById('scoreDisplay').innerText = "ERROR";
+                document.getElementById('actionDisplay').innerText = "Could not connect to Python API. Is the server running?";
+                document.getElementById('actionDisplay').className = "action urgent";
+            }
+        }
+    </script>
+</body>
+</html>
